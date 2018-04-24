@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="CalendarGrid">
+        <attr name="lineWidth" format="dimension"/>
+        <attr name="backgroundColor" format="color"/>
+        <attr name="lineColor" format="color"/>
+        <attr name="dayColor" format="color"/>
+        <attr name="weekendColor" format="color"/>
+        <attr name="initialRooms" format="integer"/>
+        <attr name="headerHeight" format="dimension"/>
+        <attr name="headerMargin" format="dimension"/>
+        <attr name="marginColor" format="color"/>
+        <attr name="headerTextColor" format="color"/>
+    </declare-styleable>
+</resources>
