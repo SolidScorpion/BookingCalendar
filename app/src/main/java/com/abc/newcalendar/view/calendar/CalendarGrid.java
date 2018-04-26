@@ -1,4 +1,4 @@
-package com.abc.newcalendar.view;
+package com.abc.newcalendar.view.calendar;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -40,7 +40,7 @@ public class CalendarGrid extends View {
     private TextPaint dayTextPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private TextPaint dayWeekTextPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private int daysPerView = 5;
-    private int initialRooms = 6;
+    private int initialRooms;
     private int backGroundColor;
     private int headerHeight;
     private int strokeWidth;
@@ -53,8 +53,7 @@ public class CalendarGrid extends View {
     private GestureDetectorCompat gestureDetectorCompat;
     private List<RectF> topSectors;
     private List<RectF> daySectors;
-    private boolean shouldHighlight = false;
-    private List<RectF> highlightRect = new ArrayList<>();
+    private List<RectF> highlightRect = new ArrayList<>(1);
     private Rect measureRect = new Rect();
     private SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd EE");
     private List<CalendarDay> calendarDays;
@@ -82,7 +81,6 @@ public class CalendarGrid extends View {
     private void init(Context c, AttributeSet attributeSet) {
         DisplayMetrics display = c.getResources().getDisplayMetrics();
         TypedArray attr = c.obtainStyledAttributes(attributeSet, R.styleable.CalendarGrid, 0, 0);
-        gestureDetectorCompat = new GestureDetectorCompat(c, new CalendarGestureDetector());
         try {
             strokeWidth = attr.getDimensionPixelSize(R.styleable.CalendarGrid_lineWidth,
                     (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, display));
@@ -102,8 +100,10 @@ public class CalendarGrid extends View {
             daySectors = new ArrayList<>(daysPerView * initialRooms);
             calendarDays = new ArrayList<>(daysPerView);
             rectsByRoom = new SparseArray<>(initialRooms);
+            gestureDetectorCompat = new GestureDetectorCompat(c, new CalendarGestureDetector());
+            float totalRoomHeight = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 60, display) * initialRooms;
+            setMinimumHeight(headerHeight + headerMargin + Math.round(totalRoomHeight));
             initHeaderDates();
-            fillSectors();
             initPaint();
         } finally {
             attr.recycle();
@@ -177,35 +177,152 @@ public class CalendarGrid extends View {
         }
     }
 
-    private void fillSectors() {
-        addOnLayoutChangeListener(new OnLayoutChangeListener() {
-            @Override
-            public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
-                removeOnLayoutChangeListener(this);
-                float xOffset = getWidth() / daysPerView;
-                float topOffset = headerHeight + headerMargin;
-                float yOffset = (getHeight() - topOffset) / initialRooms;
-                for (int i = 0; i < daysPerView; i++) {
-                    float x = i * xOffset;
-                    RectF rectF = new RectF(x, 0, x + xOffset, headerHeight);
-                    topSectors.add(rectF);
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w > 0 && h > 0) {
+            float xOffset = getWidth() / daysPerView;
+            float topOffset = headerHeight + headerMargin;
+            float yOffset = (getHeight() - topOffset) / initialRooms;
+            for (int i = 0; i < daysPerView; i++) {
+                float x = i * xOffset;
+                RectF rectF = new RectF(x, 0, x + xOffset, headerHeight);
+                topSectors.add(rectF);
+            }
+            for (int horizontal = 0; horizontal < initialRooms; horizontal++) {
+                ArrayList<RectF> sectorsByRow = new ArrayList<>();
+                for (int vertical = 0; vertical < daysPerView; vertical++) {
+                    float topX = vertical * xOffset;
+                    float topY = horizontal * yOffset + topOffset;
+                    float bottomX = (vertical + 1) * xOffset;
+                    float bottomY = (horizontal + 1) * yOffset + topOffset;
+                    RectF rectF = new RectF(topX, topY, bottomX, bottomY);
+                    sectorsByRow.add(rectF);
+                    daySectors.add(rectF);
                 }
-                for (int horizontal = 0; horizontal < initialRooms; horizontal++) {
-                    ArrayList<RectF> sectorsByRow = new ArrayList<>();
-                    for (int vertical = 0; vertical < daysPerView; vertical++) {
-                        float topX = vertical * xOffset;
-                        float topY = horizontal * yOffset + topOffset;
-                        float bottomX = (vertical + 1) * xOffset;
-                        float bottomY = (horizontal + 1) * yOffset + topOffset;
-                        RectF rectF = new RectF(topX, topY, bottomX, bottomY);
-                        sectorsByRow.add(rectF);
-                        daySectors.add(rectF);
+                rectsByRoom.append(horizontal, sectorsByRow);
+            }
+        }
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        canvas.drawColor(backGroundColor);
+        drawHeader(canvas);
+        commonDayPaint.setStyle(Paint.Style.FILL);
+        drawMargin(canvas);
+        commonDayPaint.setColor(lineColor);
+        commonDayPaint.setStyle(Paint.Style.STROKE);
+        drawRoomSectors(canvas);
+        if (!highlightRect.isEmpty()) {
+            commonDayPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+            commonDayPaint.setColor(Color.BLACK);
+            canvas.drawRect(highlightRect.get(0), commonDayPaint);
+            highlightRect.clear();
+            commonDayPaint.setStyle(Paint.Style.FILL);
+            commonDayPaint.setColor(lineColor);
+        }
+    }
+
+    private void drawRoomSectors(Canvas canvas) {
+        for (int i = 0; i < initialRooms; i++) {
+            List<RectF> roomSectors = rectsByRoom.get(i);
+            for (int day = 0; day < daysPerView; day++) {
+                CalendarDay calendarDay = calendarDays.get(day);
+                RectF roomSector = roomSectors.get(day);
+                drawSectorBackground(canvas, calendarDay, roomSector);
+            }
+        }
+    }
+
+    private void drawSectorBackground(Canvas canvas, CalendarDay calendarDay, RectF rectF) {
+        if (calendarDay.isWeekend()) {
+            canvas.drawRect(rectF, weekendPaint);
+            canvas.drawRect(rectF, commonDayPaint);
+        } else {
+            canvas.drawRect(rectF, commonDayPaint);
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        return gestureDetectorCompat.onTouchEvent(event);
+    }
+
+    private void drawMargin(Canvas canvas) {
+        commonDayPaint.setColor(marginColor);
+        canvas.drawRect(0, headerHeight, getWidth(), headerHeight + headerMargin, commonDayPaint);
+    }
+
+    private void drawHeader(Canvas canvas) {
+        commonDayPaint.setStyle(Paint.Style.STROKE);
+        for (int i = 0; i < daysPerView; i++) {
+            RectF rect = topSectors.get(i);
+            CalendarDay calendarDay = calendarDays.get(i);
+            drawSectorBackground(canvas, calendarDay, rect);
+            Log.d(TAG, "info for view: " + i);
+            int inner = i * 3 + 3;
+            int position = 0;
+            for (int k = i * 3; k < inner; k++) {
+                String headerDate = headerDates[k];
+                float x = 0;
+                float y = 0;
+                Paint textPaint = getPaint(position);
+                float paintHeight = headerDatesHeights[k];
+                switch (position) {
+                    case 0:
+                        x = rect.centerX();
+                        y = (rect.height() / 8)  + (paintHeight / 2);
+                        break;
+                    case 1:
+                        y = (rect.height() / 8) * 4f + (paintHeight / 2);
+                        x = rect.centerX();
+                        break;
+                    case 2:
+                        x = rect.centerX();
+                        y = (rect.height() / 8) * 7;
+                        break;
+                }
+                position++;
+                canvas.drawText(headerDate, x, y, textPaint);
+                Log.d(TAG, headerDate);
+            }
+        }
+    }
+
+    private class CalendarGestureDetector extends GestureDetector.SimpleOnGestureListener {
+
+        @Override
+        public boolean onDown(MotionEvent e) {
+            return true;
+        }
+
+        @Override
+        public boolean onSingleTapUp(MotionEvent e) {
+            Log.d(TAG, "onSingleTapUp " + e);
+            float x = e.getX();
+            float y = e.getY();
+            if (y > headerHeight + headerMargin) {
+                for (RectF daySector : daySectors) {
+                    if (daySector.contains(x, y)) {
+                        highlightRect.add(daySector);
+                        invalidate();
+                        return true;
                     }
-                    rectsByRoom.append(horizontal, sectorsByRow);
                 }
             }
-        });
+            return true;
+        }
+
+        @Override
+        public boolean onDoubleTap(MotionEvent e) {
+            Log.d(TAG, "onDoubleTap " + e);
+            return true;
+        }
     }
+
+    // Public methods
 
     public int getMarginColor() {
         return marginColor;
@@ -250,123 +367,5 @@ public class CalendarGrid extends View {
     public void setHeaderTextColor(int headerTextColor) {
         this.headerTextColor = headerTextColor;
         invalidate();
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        canvas.drawColor(backGroundColor);
-        drawHeader(canvas);
-        commonDayPaint.setStyle(Paint.Style.FILL);
-        drawMargin(canvas);
-        commonDayPaint.setColor(lineColor);
-        commonDayPaint.setStyle(Paint.Style.STROKE);
-        drawRoomSectors(canvas);
-        if (shouldHighlight && !highlightRect.isEmpty()) {
-            commonDayPaint.setStyle(Paint.Style.FILL_AND_STROKE);
-            commonDayPaint.setColor(Color.BLACK);
-            canvas.drawRect(highlightRect.get(0), commonDayPaint);
-            highlightRect.clear();
-            commonDayPaint.setStyle(Paint.Style.FILL);
-            commonDayPaint.setColor(lineColor);
-        }
-    }
-
-    private void drawRoomSectors(Canvas canvas) {
-        for (int i = 0; i < initialRooms; i++) {
-            List<RectF> rectFS = rectsByRoom.get(i);
-            for (int rectIndex = 0; rectIndex < rectFS.size(); rectIndex++) {
-                CalendarDay calendarDay = calendarDays.get(rectIndex);
-                RectF rectF = rectFS.get(rectIndex);
-                drawSectorBackground(canvas, calendarDay, rectF);
-            }
-        }
-    }
-
-    private void drawSectorBackground(Canvas canvas, CalendarDay calendarDay, RectF rectF) {
-        if (calendarDay.isWeekend()) {
-            canvas.drawRect(rectF, weekendPaint);
-            canvas.drawRect(rectF, commonDayPaint);
-        } else {
-            canvas.drawRect(rectF, commonDayPaint);
-        }
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        return gestureDetectorCompat.onTouchEvent(event);
-    }
-
-    private void drawMargin(Canvas canvas) {
-        commonDayPaint.setColor(marginColor);
-        canvas.drawRect(0, headerHeight, getWidth(), headerHeight + headerMargin, commonDayPaint);
-    }
-
-    private void drawHeader(Canvas canvas) {
-        commonDayPaint.setStyle(Paint.Style.STROKE);
-        for (int i = 0; i < initialRooms; i++) {
-            RectF rect = topSectors.get(i);
-            CalendarDay calendarDay = calendarDays.get(i);
-            drawSectorBackground(canvas, calendarDay, rect);
-            Log.d(TAG, "info for view: " + i);
-            int inner = i * 3 + 3;
-            int position = 0;
-            for (int k = i * 3; k < inner; k++) {
-                String headerDate = headerDates[k];
-                float x = 0;
-                float y = 0;
-                Paint textPaint = getPaint(position);
-                float paintHeight = headerDatesHeights[k];
-                switch (position) {
-                    case 0:
-                        x = rect.centerX();
-                        y = (rect.height() / 8) + (paintHeight / 2);
-                        break;
-                    case 1:
-                        y = rect.centerY() + paintHeight / 3;
-                        x = rect.centerX();
-                        break;
-                    case 2:
-                        x = rect.centerX();
-                        y = (rect.height() / 8) * 7;
-                        break;
-                }
-                position++;
-                canvas.drawText(headerDate, x, y, textPaint);
-                Log.d(TAG, headerDate);
-            }
-        }
-    }
-
-    private class CalendarGestureDetector extends GestureDetector.SimpleOnGestureListener {
-        @Override
-        public boolean onDown(MotionEvent e) {
-            return true;
-        }
-
-        @Override
-        public boolean onSingleTapUp(MotionEvent e) {
-            Log.d(TAG, "onSingleTapUp " + e);
-            float x = e.getX();
-            float y = e.getY();
-            if (y > headerHeight + headerMargin) {
-                for (RectF daySector : daySectors) {
-                    if (daySector.contains(x, y)) {
-                        shouldHighlight = true;
-                        highlightRect.add(daySector);
-                        invalidate();
-                        return true;
-                    }
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public boolean onDoubleTap(MotionEvent e) {
-            Log.d(TAG, "onDoubleTap " + e);
-            return true;
-        }
-
     }
 }

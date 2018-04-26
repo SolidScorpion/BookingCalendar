@@ -6,14 +6,22 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.abc.newcalendar.view.CalendarGrid;
+import com.abc.newcalendar.view.calendar.CalendarGrid;
 
 import java.util.Calendar;
+import java.util.Date;
 
 /**
  * Created by Anton P. on 24.04.2018.
  */
 public class SimpleWeekAdapter extends RecyclerView.Adapter<SimpleWeekAdapter.ViewHolder> {
+    private Calendar calendar;
+    private Date startDate;
+
+    SimpleWeekAdapter() {
+        calendar = Calendar.getInstance();
+        startDate = calendar.getTime();
+    }
 
     @NonNull
     @Override
@@ -23,11 +31,11 @@ public class SimpleWeekAdapter extends RecyclerView.Adapter<SimpleWeekAdapter.Vi
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Calendar instance = Calendar.getInstance();
+        calendar.setTime(startDate);
         if (position > 0) {
-            instance.add(Calendar.DAY_OF_YEAR, position * 5);
+            calendar.add(Calendar.DAY_OF_YEAR, position * 5);
         }
-        ((CalendarGrid) holder.itemView).forDates(instance.getTime());
+        holder.calendarGrid.forDates(calendar.getTime());
     }
 
     @Override
@@ -36,8 +44,12 @@ public class SimpleWeekAdapter extends RecyclerView.Adapter<SimpleWeekAdapter.Vi
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+        CalendarGrid calendarGrid;
+
         ViewHolder(View itemView) {
             super(itemView);
+            calendarGrid = itemView.findViewById(R.id.calendar);
+            calendarGrid.setOnClickListener(View::invalidate);
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.abc.newcalendar.view;
+package com.abc.newcalendar.view.calendar;
 
 import java.util.Arrays;
 import java.util.Date;

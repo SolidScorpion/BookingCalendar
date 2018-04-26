@@ -1,4 +1,4 @@
-package com.abc.newcalendar.view;
+package com.abc.newcalendar.view.calendar;
 
 import android.graphics.RectF;
 

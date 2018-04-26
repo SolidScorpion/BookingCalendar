@@ -1,12 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<com.abc.newcalendar.view.CalendarGrid xmlns:android="http://schemas.android.com/apk/res/android"
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    app:backgroundColor="@color/dayColor"
-    app:headerHeight="60dp"
-    app:headerMargin="10dp"
-    app:lineWidth="2dp">
+    android:layout_height="wrap_content">
 
-</com.abc.newcalendar.view.CalendarGrid>
+    <com.abc.newcalendar.view.calendar.CalendarGrid
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/calendar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:backgroundColor="@color/dayColor"
+        app:headerHeight="80dp"
+        app:headerMargin="20dp"
+        app:initialRooms="100"
+        app:lineWidth="2dp">
+
+    </com.abc.newcalendar.view.calendar.CalendarGrid>
+</ScrollView>
