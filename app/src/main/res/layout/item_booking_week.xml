@@ -1,22 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
 
-    <com.abc.newcalendar.view.calendar.CalendarGrid
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/calendar"
+    <com.abc.newcalendar.view.calendar.CalendarHeader
+        android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:backgroundColor="@color/dayColor"
-        app:headerHeight="80dp"
-        app:headerMargin="20dp"
-        app:initialRooms="100"
-        app:lineWidth="2dp">
+        app:header_Height="70dp"
+        app:header_backgroundColor="@color/dayColor"
+        app:header_line_width="2dp" />
 
-    </com.abc.newcalendar.view.calendar.CalendarGrid>
-</ScrollView>
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <com.abc.newcalendar.view.calendar.CalendarGrid
+
+            android:id="@+id/calendar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:backgroundColor="@color/dayColor"
+            app:headerHeight="80dp"
+            app:headerMargin="20dp"
+            app:initialRooms="20"
+            app:lineWidth="2dp">
+
+        </com.abc.newcalendar.view.calendar.CalendarGrid>
+    </ScrollView>
+</LinearLayout>

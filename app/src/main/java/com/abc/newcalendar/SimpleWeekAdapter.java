@@ -2,25 +2,26 @@ package com.abc.newcalendar;
 
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.abc.newcalendar.view.calendar.CalendarDay;
 import com.abc.newcalendar.view.calendar.CalendarGrid;
+import com.abc.newcalendar.view.calendar.CalendarHeader;
 
-import java.util.Calendar;
-import java.util.Date;
+import java.util.List;
 
 /**
  * Created by Anton P. on 24.04.2018.
  */
 public class SimpleWeekAdapter extends RecyclerView.Adapter<SimpleWeekAdapter.ViewHolder> {
-    private Calendar calendar;
-    private Date startDate;
+    public static final int INITIAL_SIZE = 10;
+    private SparseArray<List<CalendarDay>> calendarDataForViews;
 
-    SimpleWeekAdapter() {
-        calendar = Calendar.getInstance();
-        startDate = calendar.getTime();
+    SimpleWeekAdapter(SparseArray<List<CalendarDay>> calendarDataForViews) {
+        this.calendarDataForViews = calendarDataForViews;
     }
 
     @NonNull
@@ -31,23 +32,22 @@ public class SimpleWeekAdapter extends RecyclerView.Adapter<SimpleWeekAdapter.Vi
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        calendar.setTime(startDate);
-        if (position > 0) {
-            calendar.add(Calendar.DAY_OF_YEAR, position * 5);
-        }
-        holder.calendarGrid.forDates(calendar.getTime());
+        List<CalendarDay> calendarDays = calendarDataForViews.get(position);
+        holder.calendarGrid.forDates(calendarDays);
+        holder.calendarHeader.setCalendarDays(calendarDays);
     }
 
     @Override
     public int getItemCount() {
-        return 10;
+        return INITIAL_SIZE;
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         CalendarGrid calendarGrid;
-
+        CalendarHeader calendarHeader;
         ViewHolder(View itemView) {
             super(itemView);
+            calendarHeader = itemView.findViewById(R.id.header);
             calendarGrid = itemView.findViewById(R.id.calendar);
             calendarGrid.setOnClickListener(View::invalidate);
         }

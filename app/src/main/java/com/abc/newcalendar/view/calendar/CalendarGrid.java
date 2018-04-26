@@ -5,13 +5,10 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.RectF;
-import android.graphics.Typeface;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GestureDetectorCompat;
-import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -22,11 +19,10 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.abc.newcalendar.R;
+import com.abc.newcalendar.view.DataUtils;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -36,9 +32,6 @@ public class CalendarGrid extends View {
     private static final String TAG = "CalendarGrid";
     private Paint commonDayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Paint weekendPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private TextPaint monthTextPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    private TextPaint dayTextPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    private TextPaint dayWeekTextPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private int daysPerView = 5;
     private int initialRooms;
     private int backGroundColor;
@@ -51,15 +44,9 @@ public class CalendarGrid extends View {
     private int weekendColor;
     private int headerTextColor;
     private GestureDetectorCompat gestureDetectorCompat;
-    private List<RectF> topSectors;
     private List<RectF> daySectors;
     private List<RectF> highlightRect = new ArrayList<>(1);
-    private Rect measureRect = new Rect();
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd EE");
     private List<CalendarDay> calendarDays;
-    private Calendar startCalendar;
-    private String[] headerDates = new String[daysPerView * 3]; // 3 strings per day (months, day, day of week)
-    private float[] headerDatesHeights = new float[headerDates.length];
     private SparseArray<List<RectF>> rectsByRoom;
 
     public CalendarGrid(Context context) {
@@ -72,9 +59,11 @@ public class CalendarGrid extends View {
         init(context, attrs);
     }
 
-    public void forDates(Date startDate) {
-        startCalendar.setTime(startDate);
-        initHeaderDates();
+    public void forDates(List<CalendarDay> calendarDays) {
+        if (calendarDays != null) {
+            this.calendarDays.clear();
+            this.calendarDays.addAll(calendarDays);
+        }
         invalidate();
     }
 
@@ -95,24 +84,20 @@ public class CalendarGrid extends View {
             backGroundColor = attr.getColor(R.styleable.CalendarGrid_backgroundColor, Color.GREEN);
             headerTextColor = attr.getColor(R.styleable.CalendarGrid_headerTextColor, Color.BLACK);
             lineColor = attr.getColor(R.styleable.CalendarGrid_lineColor, Color.WHITE);
-            startCalendar = Calendar.getInstance();
-            topSectors = new ArrayList<>(daysPerView);
             daySectors = new ArrayList<>(daysPerView * initialRooms);
             calendarDays = new ArrayList<>(daysPerView);
             rectsByRoom = new SparseArray<>(initialRooms);
             gestureDetectorCompat = new GestureDetectorCompat(c, new CalendarGestureDetector());
             float totalRoomHeight = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 60, display) * initialRooms;
-            setMinimumHeight(headerHeight + headerMargin + Math.round(totalRoomHeight));
-            initHeaderDates();
+            setMinimumHeight(Math.round(totalRoomHeight));
             initPaint();
+            forDates(DataUtils.getStubDataForDates(1, Calendar.getInstance()).get(0));
         } finally {
             attr.recycle();
         }
     }
 
     private void initPaint() {
-        DisplayMetrics display = getContext().getResources().getDisplayMetrics();
-
         commonDayPaint.setStyle(Paint.Style.FILL);
         commonDayPaint.setStrokeWidth(strokeWidth);
         commonDayPaint.setColor(lineColor);
@@ -120,61 +105,6 @@ public class CalendarGrid extends View {
         weekendPaint.setStyle(Paint.Style.FILL);
         weekendPaint.setStrokeWidth(strokeWidth);
         weekendPaint.setColor(weekendColor);
-
-        monthTextPaint.setTextAlign(Paint.Align.CENTER);
-        monthTextPaint.setColor(headerTextColor);
-        monthTextPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
-                12, display));
-
-        dayTextPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 26, display));
-        dayTextPaint.setColor(headerTextColor);
-        dayTextPaint.setTextAlign(Paint.Align.CENTER);
-
-        dayWeekTextPaint.setColor(headerTextColor);
-        dayWeekTextPaint.setTextAlign(Paint.Align.CENTER);
-        dayWeekTextPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 12, display));
-        dayWeekTextPaint.setTypeface(Typeface.DEFAULT_BOLD);
-    }
-
-    private boolean isWeekend(Calendar cal) {
-        int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
-        return dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY;
-    }
-
-    private void initHeaderDates() {
-        calendarDays.clear();
-        for (int i = 0; i < daysPerView; i++) {
-            if (i != 0) {
-                startCalendar.add(Calendar.DAY_OF_YEAR, 1);
-            }
-            Date time = startCalendar.getTime();
-            String date = dateFormat.format(time);
-            String[] split = date.split(" ");
-            CalendarDay day = new CalendarDay(isWeekend(startCalendar), time, split);
-            calendarDays.add(day);
-            int splitIndex = 0;
-            int inner = i * 3 + 3;
-            for (int k = i * 3; k < inner; k++) {
-                Paint paint = getPaint(splitIndex);
-                String splitDate = split[splitIndex++];
-                paint.getTextBounds(splitDate, 0, splitDate.length(), measureRect);
-                headerDatesHeights[k] = measureRect.height();
-                headerDates[k] = splitDate;
-            }
-        }
-    }
-
-    private Paint getPaint(int splitIndex) {
-        switch (splitIndex) {
-            case 0:
-                return monthTextPaint;
-            case 1:
-                return dayTextPaint;
-            case 2:
-                return dayWeekTextPaint;
-            default:
-                return monthTextPaint;
-        }
     }
 
     @Override
@@ -182,20 +112,14 @@ public class CalendarGrid extends View {
         super.onSizeChanged(w, h, oldw, oldh);
         if (w > 0 && h > 0) {
             float xOffset = getWidth() / daysPerView;
-            float topOffset = headerHeight + headerMargin;
-            float yOffset = (getHeight() - topOffset) / initialRooms;
-            for (int i = 0; i < daysPerView; i++) {
-                float x = i * xOffset;
-                RectF rectF = new RectF(x, 0, x + xOffset, headerHeight);
-                topSectors.add(rectF);
-            }
+            float yOffset = getHeight() / initialRooms;
             for (int horizontal = 0; horizontal < initialRooms; horizontal++) {
                 ArrayList<RectF> sectorsByRow = new ArrayList<>();
                 for (int vertical = 0; vertical < daysPerView; vertical++) {
                     float topX = vertical * xOffset;
-                    float topY = horizontal * yOffset + topOffset;
+                    float topY = horizontal * yOffset;
                     float bottomX = (vertical + 1) * xOffset;
-                    float bottomY = (horizontal + 1) * yOffset + topOffset;
+                    float bottomY = (horizontal + 1) * yOffset;
                     RectF rectF = new RectF(topX, topY, bottomX, bottomY);
                     sectorsByRow.add(rectF);
                     daySectors.add(rectF);
@@ -209,9 +133,6 @@ public class CalendarGrid extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         canvas.drawColor(backGroundColor);
-        drawHeader(canvas);
-        commonDayPaint.setStyle(Paint.Style.FILL);
-        drawMargin(canvas);
         commonDayPaint.setColor(lineColor);
         commonDayPaint.setStyle(Paint.Style.STROKE);
         drawRoomSectors(canvas);
@@ -248,47 +169,6 @@ public class CalendarGrid extends View {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         return gestureDetectorCompat.onTouchEvent(event);
-    }
-
-    private void drawMargin(Canvas canvas) {
-        commonDayPaint.setColor(marginColor);
-        canvas.drawRect(0, headerHeight, getWidth(), headerHeight + headerMargin, commonDayPaint);
-    }
-
-    private void drawHeader(Canvas canvas) {
-        commonDayPaint.setStyle(Paint.Style.STROKE);
-        for (int i = 0; i < daysPerView; i++) {
-            RectF rect = topSectors.get(i);
-            CalendarDay calendarDay = calendarDays.get(i);
-            drawSectorBackground(canvas, calendarDay, rect);
-            Log.d(TAG, "info for view: " + i);
-            int inner = i * 3 + 3;
-            int position = 0;
-            for (int k = i * 3; k < inner; k++) {
-                String headerDate = headerDates[k];
-                float x = 0;
-                float y = 0;
-                Paint textPaint = getPaint(position);
-                float paintHeight = headerDatesHeights[k];
-                switch (position) {
-                    case 0:
-                        x = rect.centerX();
-                        y = (rect.height() / 8)  + (paintHeight / 2);
-                        break;
-                    case 1:
-                        y = (rect.height() / 8) * 4f + (paintHeight / 2);
-                        x = rect.centerX();
-                        break;
-                    case 2:
-                        x = rect.centerX();
-                        y = (rect.height() / 8) * 7;
-                        break;
-                }
-                position++;
-                canvas.drawText(headerDate, x, y, textPaint);
-                Log.d(TAG, headerDate);
-            }
-        }
     }
 
     private class CalendarGestureDetector extends GestureDetector.SimpleOnGestureListener {

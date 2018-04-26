@@ -12,4 +12,14 @@
         <attr name="marginColor" format="color"/>
         <attr name="headerTextColor" format="color"/>
     </declare-styleable>
+    <declare-styleable name="CalendarHeader">
+        <attr name="header_line_width" format="dimension"/>
+        <attr name="header_Height" format="dimension"/>
+        <attr name="header_weekendColor" format="color"/>
+        <attr name="header_marginColor" format="color"/>
+        <attr name="header_backgroundColor" format="color"/>
+        <attr name="header_headerTextColor" format="color"/>
+        <attr name="header_headerMargin" format="dimension"/>
+        <attr name="header_lineColor" format="color"/>
+    </declare-styleable>
 </resources>

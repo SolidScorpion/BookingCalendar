@@ -12,7 +12,7 @@ public class CalendarDay {
     private String[] formattedData;
     private boolean isSelected;
 
-    CalendarDay(boolean isWeekend, Date date, String[] formattedData) {
+    public CalendarDay(boolean isWeekend, Date date, String[] formattedData) {
         this.isWeekend = isWeekend;
         this.date = date;
         this.formattedData = formattedData;
